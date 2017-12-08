@@ -4,14 +4,13 @@ import argparse
 import numpy as np
 import utils as ut
 from model import CNN4Rec
-import time
 train_data_path = 'train.tfrecords'
 valid_data_path = 'valid.tfrecords'
 dataset = 'kuwo'
 error_during_training = False
 class Args():
     is_training = True
-    n_epochs = 5
+    n_epochs = 10
     batch_size = 50
     keep_prob = 1.0
     learning_rate = 0.001
@@ -23,7 +22,7 @@ class Args():
 def parseArgs():
     args = Args()
     parser = argparse.ArgumentParser(description='CNN4Rec args')
-    parser.add_argument('--epoch', default=50, type=int)
+    parser.add_argument('--epoch', default=10, type=int)
     parser.add_argument('--batch', default=50, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--dr', default=0.98, type=float)
@@ -81,14 +80,9 @@ def train(args):
             epoch_cost = []
             for k in xrange(num_batches):
                 imgs, labels = sess.run([img_batch, label_batch])
-                print imgs
-                time.sleep(10) 
-                print labels
-                fetches = [model.cost, model.global_step, model.lr, model.train_op, model.prob, model.cost]
+                fetches = [model.cost, model.global_step, model.lr, model.train_op]
                 feed_dict = {model.imgs: imgs, model.labels: labels}
-                cost, step, lr, _, prob =  sess.run(fetches, feed_dict) 
-                print prob
-                time.sleep(10)
+                cost, step, lr, _ =  sess.run(fetches, feed_dict) 
                 epoch_cost.append(cost)
                 if np.isnan(cost):
                     print(str(epoch) + ':Nan error!')

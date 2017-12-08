@@ -56,7 +56,7 @@ def evaluate(args):
     gpu_config.gpu_options.allow_growth = True
     args.batch_size = 1
     img_batch, label_batch = ut.load_test(args.batch_size)
-    recall, accuracy, f1 = 0.0, 0.0, 0.0
+    recall, precision, f1 = 0.0, 0.0, 0.0
     with tf.Session(config=gpu_config) as sess:
         model = CNN4Rec(args)
         saver = tf.train.Saver(tf.global_variables()) 
@@ -71,24 +71,29 @@ def evaluate(args):
         threads = tf.train.start_queue_runners(sess=sess, coord=coord)
         num_batches = test_num / args.batch_size
         for k in xrange(num_batches):
-            img, label = sess.run([img_batch, label_batch])
-            preds = model.predict_label(sess, img)
-            preds[preds>=0.5] = 1
-            print preds
-            accuracy += metrics.accuracy_score(label, preds)
-            recall += metrics.recall_score(label, preds)
-            f1 += metrics.f1_score(label, preds)
-        accuracy = accuracy / num_batches
+            imgs, labels = sess.run([img_batch, label_batch])
+            preds = model.predict_label(sess, imgs)
+            preds[preds>0.5] = 1
+            preds[preds<=0.5] = 0
+            preds = preds.T
+            preds = preds.astype(int)
+            #print preds
+            #print labels
+            precision += metrics.precision_score(labels, preds, average='micro')
+            recall += metrics.recall_score(labels, preds, average='micro')
+            f1 += metrics.f1_score(labels, preds, average='micro')
+        precision = precision / num_batches
         recall = recall / num_batches
         f1 = f1 / num_batches
-        print recall
-    return recall, accuracy, f1
+        #print recall
+
+    return recall, precision, f1
 
 if __name__=='__main__':
     args = parseArgs()
     res = evaluate(args)
     print('lr: {}\tbatch_size: {}\tdecay_steps: {}\tdecay_rate: {}\tkeep_prob: {}'.format(args.learning_rate, args.batch_size, args.decay_steps, args.decay, args.keep_prob))
-    print('Recall: {}\tAccuracy: {}\tF1: {}'.format(res[0], res[1], res[2]))
+    print('Recall: {}\tPrecision: {}\tF1: {}'.format(res[0], res[1], res[2]))
     sys.stdout.flush()
             
 

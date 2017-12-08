@@ -22,6 +22,8 @@ class CNN4Rec:
         return tf.nn.relu(X)
     def sigmoid(self, X):
         return tf.nn.sigmoid(X)
+    def elu(self, X):
+        return tf.nn.elu(X)
 ############################################Layer########################################
     def conv_layer(self, input_tensor, name, kh, kw, n_out, dh=1, dw=1):
         n_in = input_tensor.get_shape()[-1].value
@@ -36,8 +38,8 @@ class CNN4Rec:
         with tf.variable_scope(name):
             weights = tf.get_variable('weights', [n_in, n_out], tf.float32, xavier_initializer())
             biases = tf.get_variable('bias', [n_out], tf.float32, tf.constant_initializer(0.0))
-            logits = tf.nn.bias_add(tf.matmul(input_tensor, weights), biases)
-            return self.relu(logits)
+            fc = tf.nn.bias_add(tf.matmul(input_tensor, weights), biases)
+            return fc
     def max_pool(self, input_tensor, name, kh, kw, dh, dw):
         return tf.nn.max_pool(input_tensor, ksize=[1, kh, kw, 1], strides=[1, dh, dw, 1], padding='VALID', name=name)
     def loss(self, logits, onehot_labels):
@@ -61,11 +63,12 @@ class CNN4Rec:
         self.flattened_shape = np.prod([s.value for s in self.pool4.get_shape()[1:]])
         self.flatten = tf.reshape(self.pool4, [-1, self.flattened_shape], name='flatten')
         self.fc1 = self.fc_layer(self.flatten, 'fc1', n_out=128)
-        self.drop = tf.nn.dropout(self.fc1, self.args.keep_prob)
+        self.elu = self.elu(self.fc1)
+        self.drop = tf.nn.dropout(self.elu, self.args.keep_prob)
         self.fc2 = self.fc_layer(self.drop, 'fc2', n_out=self.args.n_classes)
         #self.probs = tf.nn.softmax(self.fc2, name='prob')
         self.probs = self.fc2
-        self.prob = self.sigmoid(self.probs)
+        #self.prob = self.sigmoid(self.probs)
         print 'build model finished'
         if self.args.is_training:
             self.cost = self.loss(self.probs, self.labels)
