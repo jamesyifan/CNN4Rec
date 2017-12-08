@@ -66,7 +66,6 @@ def train(args):
                 print 'Restore model from: {}'.foramt(args.checkpoint_dir)
         else:
             sess.run(tf.global_variables_initializer())
-            sess.run(tf.local_variables_initializer())
             print 'Randomly initialize model'
         valid_losses = []
         best_step = -1
