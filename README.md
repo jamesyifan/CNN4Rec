@@ -1,2 +1,2 @@
 # CNN4Rec
-cnn for recommendation with tensorflow
+cnn for music classification with tensorflow
