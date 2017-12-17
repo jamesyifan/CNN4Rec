@@ -3,6 +3,8 @@ import xlrd
 import numpy as np
 import tensorflow as tf
 import os
+from sklearn import preprocessing
+import time
 
 IMG_ROOT_OLD= 'img/'
 IMG_ROOT = 'img_new/'
@@ -12,7 +14,7 @@ TF_ROOT = 'tfrecord/'
 LABEL = 'label.xlsx'
 DEFAULT_IMG_HEIGHT = 256
 DEFAULT_IMG_WIDTH = 100
-DEFAULT_LABEL_SIZE = 83
+DEFAULT_LABEL_SIZE = 171
 
 def load_label():
     workbook = xlrd.open_workbook(LABEL_ROOT+LABEL)
@@ -50,16 +52,23 @@ def load_label():
             if value != u'':
                 if value not in reason_dict.keys():
                     reason_dict[value] = len(reason_dict)
-    label = np.zeros([booksheet.nrows, len(reason_dict)+1], int)    
+##################################################################################
+    #change this to get different label
+    train_dict = sensibility_dict
+    train_col = 7
+##########################
+    label = np.zeros([booksheet.nrows, len(train_dict)+1], int)    
     for row in range(booksheet.nrows):
         if row == 0:
             continue
-        reason_value = booksheet.cell_value(row, 8).strip('##').split('##')
+        train_value = booksheet.cell_value(row, train_col).strip('##').split('##')
         id_value = int(booksheet.cell_value(row, 0))
-        for value in reason_value:
+        for value in train_value:
             if value != u'':
-                label[row, reason_dict[value]] = 1
-        label[row, len(reason_dict)] = id_value
+                label[row, train_dict[value]] = 1
+        label[row, len(train_dict)] = id_value
+        #print label[row]
+        #time.sleep(5)
     return label
 
 #def : 
@@ -187,7 +196,10 @@ def split_data(train, valid, test):
         img_name_cleaned = int(img_name_cleaned.split('_')[0])
         if img_name_cleaned in train[:,-1]:
             train_num += 1
-            train_img_raw = np.load(IMG_ROOT+img_name).tostring()
+            train_img_raw_scale = np.load(IMG_ROOT+img_name)
+            train_img_raw_scale = preprocessing.scale(train_img_raw_scale)
+            train_img_raw = train_img_raw_scale.tostring()
+            #train_img_raw = np.load(IMG_ROOT+img_name).tostring()
             train_label_index = np.where(train[:,-1]==img_name_cleaned)
             train_label = train[train_label_index[0][0],:-1].tostring()
             train_example = tf.train.Example(features=tf.train.Features(feature={
@@ -197,7 +209,10 @@ def split_data(train, valid, test):
             train_writer.write(train_example.SerializeToString())
         elif img_name_cleaned in valid[:,-1]:
             valid_num += 1
-            valid_img_raw = np.load(IMG_ROOT+img_name).tostring()
+            valid_img_raw_scale = np.load(IMG_ROOT+img_name)
+            valid_img_raw_scale = preprocessing.scale(valid_img_raw_scale)
+            valid_img_raw = valid_img_raw_scale.tostring()
+            #valid_img_raw = np.load(IMG_ROOT+img_name).tostring()
             valid_label_index = np.where(valid[:,-1]==img_name_cleaned)
             valid_label = valid[valid_label_index[0][0],:-1].tostring()
             valid_example = tf.train.Example(features=tf.train.Features(feature={
@@ -207,7 +222,10 @@ def split_data(train, valid, test):
             valid_writer.write(valid_example.SerializeToString())
         elif img_name_cleaned in test[:,-1]: 
             test_num += 1
-            test_img_raw = np.load(IMG_ROOT+img_name).tostring()
+            test_img_raw_scale = np.load(IMG_ROOT+img_name)
+            test_img_raw_scale = preprocessing.scale(test_img_raw_scale)
+            test_img_raw = test_img_raw_scale.tostring()
+            #test_img_raw = np.load(IMG_ROOT+img_name).tostring()
             test_label_index = np.where(test[:,-1]==img_name_cleaned)
             test_label = test[test_label_index[0][0],:-1].tostring()
             test_example = tf.train.Example(features=tf.train.Features(feature={
@@ -227,7 +245,7 @@ def load_data():
     valid_num = int(label.shape[0] * 0.1)
     test_num = label.shape[0]-train_num-valid_num
     np.random.shuffle(label)
-    #train_num, valid_num, test_num = split_data(label[0:train_number, :], label[train_number:(train_number+valid_number),:], label[(train_number+valid_number):-1, :])
+    #train_num, valid_num, test_num = split_data(label[0:train_num, :], label[train_num:(train_num+valid_num),:], label[(train_num+valid_num):-1, :])
     return label, train_num, valid_num, test_num
 
 if __name__=='__main__':

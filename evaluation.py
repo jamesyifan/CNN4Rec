@@ -5,6 +5,7 @@ import tensorflow as tf
 import utils as ut
 import sklearn.metrics as metrics
 from model import CNN4Rec
+import time
 
 
 dataset = 'kuwo'
@@ -30,6 +31,9 @@ def parseArgs():
     parser.add_argument('--ds', default=500, type=int)
     parser.add_argument('--keep', default=1.0, type=float)
     parser.add_argument('--init_from', default=None, type=str)
+    parser.add_argument('--is_reason', default=False, type=bool)
+    parser.add_argument('--is_sensibility', default=False, type=bool)
+    parser.add_argument('--is_style', default=False, type=bool)
     command_line = parser.parse_args()
 
     args.n_epochs = command_line.epoch
@@ -38,13 +42,21 @@ def parseArgs():
     args.decay = command_line.dr
     args.decay_steps = command_line.ds
     args.keep_prob = command_line.keep
-    
+    args.is_reason = command_line.is_reason
+    args.is_sensibility = command_line.is_sensibility
+    args.is_style = command_line.is_style
+    if args.is_reason:
+        args.checkpoint_dir += ('_reason')
+    if args.is_sensibility:
+        args.checkpoint_dir += ('_sensibility')
+    if args.is_style:
+        args.checkpoint_dir += ('_style')
     args.checkpoint_dir += ('_batch' + str(command_line.batch))
     args.checkpoint_dir += ('_lr' + str(command_line.lr))
     args.checkpoint_dir += ('_dr' + str(command_line.dr))
     args.checkpoint_dir += ('_ds' + str(command_line.ds))
     args.checkpoint_dir += ('_p' + str(command_line.keep))
-
+ 
     args.init_from = command_line.init_from
     return args
 
@@ -56,7 +68,7 @@ def evaluate(args):
     gpu_config.gpu_options.allow_growth = True
     args.batch_size = 1
     img_batch, label_batch = ut.load_test(args.batch_size)
-    recall, precision, f1 = 0.0, 0.0, 0.0
+    recall, recall10, precision, f1 =0.0, 0.0, 0.0, 0.0
     with tf.Session(config=gpu_config) as sess:
         model = CNN4Rec(args)
         saver = tf.train.Saver(tf.global_variables()) 
@@ -73,27 +85,40 @@ def evaluate(args):
         for k in xrange(num_batches):
             imgs, labels = sess.run([img_batch, label_batch])
             preds = model.predict_label(sess, imgs)
+            preds1 = preds
             preds[preds>0.5] = 1
             preds[preds<=0.5] = 0
+            #print preds.T
+            #print len(preds)
+            #print labels
+            #if k==3:
+            #    return
             preds = preds.T
             preds = preds.astype(int)
+            topindex = sorted(range(len(preds1)), key=lambda x: preds1[x], reverse=True)[:10]
+            preds1[:] = 0
+            for index in topindex:
+                preds1[index] = 1
+            preds1 = preds1.T
             #print preds
             #print labels
             precision += metrics.precision_score(labels, preds, average='micro')
             recall += metrics.recall_score(labels, preds, average='micro')
             f1 += metrics.f1_score(labels, preds, average='micro')
+            recall10 += metrics.recall_score(labels, preds1, average='micro')
         precision = precision / num_batches
         recall = recall / num_batches
         f1 = f1 / num_batches
+        recall10 = recall10/ num_batches
         #print recall
 
-    return recall, precision, f1
+    return recall, precision, f1, recall10
 
 if __name__=='__main__':
     args = parseArgs()
     res = evaluate(args)
     print('lr: {}\tbatch_size: {}\tdecay_steps: {}\tdecay_rate: {}\tkeep_prob: {}'.format(args.learning_rate, args.batch_size, args.decay_steps, args.decay, args.keep_prob))
-    print('Recall: {}\tPrecision: {}\tF1: {}'.format(res[0], res[1], res[2]))
+    print('Recall: {}\tPrecision: {}\tF1: {}\tRecall@10: {}'.format(res[0], res[1], res[2], res[3]))
     sys.stdout.flush()
             
 

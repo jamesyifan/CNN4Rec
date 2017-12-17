@@ -26,9 +26,12 @@ def parseArgs():
     parser.add_argument('--batch', default=50, type=int)
     parser.add_argument('--lr', default=0.001, type=float)
     parser.add_argument('--dr', default=0.98, type=float)
-    parser.add_argument('--ds', default=500, type=int)
+    parser.add_argument('--ds', default=100, type=int)
     parser.add_argument('--keep', default=1.0, type=float)
     parser.add_argument('--init_from', default=None, type=str)
+    parser.add_argument('--is_reason', default=False, type=bool)
+    parser.add_argument('--is_sensibility', default=False, type=bool)
+    parser.add_argument('--is_style', default=False, type=bool)
     command_line = parser.parse_args()
 
     args.n_epochs = command_line.epoch
@@ -37,6 +40,15 @@ def parseArgs():
     args.decay = command_line.dr
     args.decay_steps = command_line.ds
     args.keep_prob = command_line.keep
+    args.is_reason = command_line.is_reason
+    args.is_sensibility = command_line.is_sensibility
+    args.is_style = command_line.is_style
+    if args.is_reason:
+        args.checkpoint_dir += ('_reason')
+    if args.is_sensibility:
+        args.checkpoint_dir += ('_sensibility')
+    if args.is_style:
+        args.checkpoint_dir += ('_style')
     
     args.checkpoint_dir += ('_batch' + str(command_line.batch))
     args.checkpoint_dir += ('_lr' + str(command_line.lr))
